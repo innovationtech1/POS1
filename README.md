@@ -32,7 +32,7 @@
 ### 🔐 Autenticación
 - Login con Google
 - Registro con Email/Password
-- Modo Invitado
+- Cuenta obligatoria para contratar servicios y consultar pedidos
 - Recuperación de contraseña
 - Autenticación biométrica (WebAuthn)
 

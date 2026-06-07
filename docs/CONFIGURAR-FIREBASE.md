@@ -95,9 +95,14 @@ const firebaseConfig = {
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Permitir lectura/escritura de cotizaciones
+    // Cada cliente solo puede crear y leer sus propios pedidos.
     match /quotations/{quotationId} {
-      allow read, write: if true;
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.userEmail == request.auth.token.email;
+
+      allow read, update, delete: if request.auth != null
+        && resource.data.userId == request.auth.uid;
     }
     
     // Permitir lectura/escritura de usuarios autenticados
@@ -137,6 +142,10 @@ Cada pedido se guarda con esta estructura:
   customerEmail: "juan@email.com",
   customerPhone: "+1234567890",
   customerCompany: "Mi Empresa",
+  userId: "firebase-auth-uid",
+  userEmail: "juan@email.com",
+  userName: "Juan Pérez",
+  authProvider: "google.com",
   deliveryDate: "2026-12-31",
   brief: "Descripción del proyecto...",
   services: [

@@ -6,6 +6,15 @@
 const WHATSAPP_NUMBER = '12109900532';
 const SALES_EMAIL = 'hectordehoyos053@gmail.com';
 const CART_STORAGE_KEY = 'innovationtech_cart';
+const AUTH_REQUIRED_MESSAGE = 'Necesitas iniciar sesión o crear una cuenta para contratar servicios y guardar tu pedido.';
+
+const ORDER_FIELD_RULES = [
+    { id: 'order-name', errorId: 'error-order-name', check: v => v.trim().length > 2 },
+    { id: 'order-email', errorId: 'error-order-email', check: v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()) },
+    { id: 'order-phone', errorId: 'error-order-phone', check: v => v.trim().length >= 8 },
+    { id: 'order-date', errorId: 'error-order-date', check: v => v.trim().length > 0 },
+    { id: 'order-brief', errorId: 'error-order-brief', check: v => v.trim().length >= 20 }
+];
 
 const TIER_LABELS = {
     basic: 'Básico',
@@ -506,6 +515,333 @@ function prefillContactSubject() {
     subjectEl.value = `Pedido: ${cart.length} servicio(s) — ${total}`;
 }
 
+function escapeHTML(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    }[char]));
+}
+
+function getCurrentAuthenticatedUser() {
+    return typeof getCurrentUser === 'function' ? getCurrentUser() : null;
+}
+
+function getAuthProvider(user) {
+    const providerId = user?.providerData?.[0]?.providerId || 'password';
+    const providers = {
+        'google.com': 'google',
+        password: 'email'
+    };
+    return providers[providerId] || providerId;
+}
+
+function requireAuthenticatedUser() {
+    const user = getCurrentAuthenticatedUser();
+    if (user) return user;
+
+    showMessage(AUTH_REQUIRED_MESSAGE, 'info');
+    openAuthModal();
+    return null;
+}
+
+function prefillOrderFromUser(user) {
+    if (!user) return;
+
+    const nameInput = document.getElementById('order-name');
+    const emailInput = document.getElementById('order-email');
+
+    if (nameInput && !nameInput.value.trim() && user.displayName) {
+        nameInput.value = user.displayName;
+    }
+
+    if (emailInput && user.email) {
+        emailInput.value = user.email;
+    }
+}
+
+function validateOrder() {
+    let valid = true;
+
+    ORDER_FIELD_RULES.forEach(field => {
+        const inputEl = document.getElementById(field.id);
+        const errorEl = document.getElementById(field.errorId);
+        if (!inputEl) return;
+
+        if (!field.check(inputEl.value)) {
+            inputEl.classList.add('invalid');
+            if (errorEl) errorEl.style.display = 'block';
+            valid = false;
+        } else {
+            inputEl.classList.remove('invalid');
+            if (errorEl) errorEl.style.display = 'none';
+        }
+    });
+
+    return valid;
+}
+
+function getFormData() {
+    return {
+        name: document.getElementById('order-name').value.trim(),
+        email: document.getElementById('order-email').value.trim(),
+        phone: document.getElementById('order-phone').value.trim(),
+        company: document.getElementById('order-company').value.trim(),
+        date: document.getElementById('order-date').value,
+        brief: document.getElementById('order-brief').value.trim()
+    };
+}
+
+function buildQuotationData(formData, overrides = {}) {
+    const user = getCurrentAuthenticatedUser();
+    const total = getCartTotal();
+
+    return {
+        customerName: formData.name,
+        customerEmail: formData.email,
+        customerPhone: formData.phone,
+        customerCompany: formData.company || null,
+        deliveryDate: formData.date,
+        brief: formData.brief,
+        services: cart.map(item => ({
+            serviceId: item.serviceId,
+            serviceName: item.serviceName,
+            tier: item.tier,
+            tierLabel: item.tierLabel,
+            quantity: item.qty,
+            basePrice: item.basePrice,
+            total: item.total,
+            deliverables: SERVICES[item.serviceId]?.deliverables?.[item.tier] || [],
+            extras: { ...item.extras }
+        })),
+        subtotal: total,
+        total,
+        status: overrides.status || 'pending',
+        paymentMethod: overrides.paymentMethod || null,
+        paymentConfirmation: overrides.paymentConfirmation || null,
+        source: 'online-pos',
+        userId: user?.uid || null,
+        userEmail: user?.email || formData.email,
+        userName: user?.displayName || formData.name,
+        authProvider: user ? getAuthProvider(user) : null,
+        ...overrides
+    };
+}
+
+function closePreview() {
+    const previewModal = document.getElementById('preview-modal');
+    if (!previewModal) return;
+
+    previewModal.style.display = 'none';
+    previewModal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+}
+
+function showPreview() {
+    if (!requireAuthenticatedUser()) return;
+    if (!validateOrder()) return;
+    if (cart.length === 0) {
+        alert('Agrega al menos un servicio al carrito antes de ver la vista previa.');
+        return;
+    }
+
+    const formData = getFormData();
+    const previewModal = document.getElementById('preview-modal');
+    const previewContent = document.getElementById('preview-content');
+    if (!previewModal || !previewContent) return;
+
+    let html = '';
+
+    html += `
+        <div class="preview-section">
+            <div class="preview-section-title">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                </svg>
+                Información del Cliente
+            </div>
+            <div class="preview-section-content">
+                <div class="preview-info-row">
+                    <span class="preview-info-label">Nombre:</span>
+                    <span class="preview-info-value">${escapeHTML(formData.name)}</span>
+                </div>
+                <div class="preview-info-row">
+                    <span class="preview-info-label">Email:</span>
+                    <span class="preview-info-value">${escapeHTML(formData.email)}</span>
+                </div>
+                <div class="preview-info-row">
+                    <span class="preview-info-label">WhatsApp:</span>
+                    <span class="preview-info-value">${escapeHTML(formData.phone)}</span>
+                </div>
+                ${formData.company ? `
+                <div class="preview-info-row">
+                    <span class="preview-info-label">Empresa:</span>
+                    <span class="preview-info-value">${escapeHTML(formData.company)}</span>
+                </div>
+                ` : ''}
+                <div class="preview-info-row">
+                    <span class="preview-info-label">Fecha de entrega:</span>
+                    <span class="preview-info-value">${escapeHTML(formData.date)}</span>
+                </div>
+            </div>
+        </div>
+    `;
+
+    html += `
+        <div class="preview-section">
+            <div class="preview-section-title">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                </svg>
+                Servicios Contratados
+            </div>
+            <div class="preview-section-content">
+    `;
+
+    cart.forEach((item, i) => {
+        const svc = SERVICES[item.serviceId];
+        const deliverables = svc && svc.deliverables && svc.deliverables[item.tier] ? svc.deliverables[item.tier] : [];
+
+        html += `
+            <div class="preview-service-item">
+                <div class="preview-service-header">
+                    <div>
+                        <h4 class="preview-service-title">${i + 1}. ${escapeHTML(item.serviceName)}</h4>
+                        <div class="preview-service-tier">${escapeHTML(item.tierLabel)}${item.qty > 1 ? ` × ${item.qty}` : ''}</div>
+                    </div>
+                    <div class="preview-service-price">${formatUSD(item.total)}</div>
+                </div>
+        `;
+
+        if (deliverables.length > 0) {
+            html += `
+                <div class="preview-deliverables">
+                    <div class="preview-deliverables-title">Incluye:</div>
+                    <ul class="preview-deliverables-list">
+                        ${deliverables.map(d => `<li>${escapeHTML(d)}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+        }
+
+        const extrasLabels = [];
+        if (item.extras.rush) extrasLabels.push('Entrega urgente');
+        if (item.extras.lang) extrasLabels.push('Idioma adicional');
+        if (item.extras.revisions) extrasLabels.push('Revisiones extra');
+
+        if (extrasLabels.length > 0) {
+            html += `
+                <div class="preview-extras">
+                    <div class="preview-extras-title">Extras:</div>
+                    <div class="preview-extras-list">
+                        ${extrasLabels.map(label => `<span class="preview-extra-badge">${escapeHTML(label)}</span>`).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        html += '</div>';
+    });
+
+    html += `
+                <div class="preview-total">
+                    <span class="preview-total-label">Total del Proyecto:</span>
+                    <span class="preview-total-amount">${formatUSD(getCartTotal())}</span>
+                </div>
+            </div>
+        </div>
+    `;
+
+    html += `
+        <div class="preview-section">
+            <div class="preview-section-title">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                Brief del Proyecto
+            </div>
+            <div class="preview-brief">${escapeHTML(formData.brief)}</div>
+        </div>
+    `;
+
+    previewContent.innerHTML = html;
+    previewModal.style.display = 'flex';
+    previewModal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+}
+
+async function submitOrder(viaEmail = false, options = {}) {
+    const user = requireAuthenticatedUser();
+    if (!user || !validateOrder()) return false;
+
+    if (cart.length === 0) {
+        alert('Agrega al menos un servicio al carrito antes de enviar el pedido, o usa el formulario de contacto para consultas generales.');
+        return false;
+    }
+
+    const formData = getFormData();
+    const message = buildOrderMessage(formData);
+    const orderSnapshot = cart.map(item => ({
+        ...item,
+        extras: { ...item.extras }
+    }));
+
+    localStorage.setItem('innovationtech_last_order', JSON.stringify({
+        formData,
+        cart: orderSnapshot,
+        userId: user.uid,
+        date: new Date().toISOString()
+    }));
+
+    const orderForm = document.getElementById('order-form');
+    const orderOverlay = document.getElementById('order-success-overlay');
+    const submitBtn = document.getElementById('btn-submit-order');
+    const originalContent = submitBtn?.innerHTML;
+
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Enviando...';
+    }
+
+    try {
+        if (!options.skipFirebaseSave && window.FirebaseDB) {
+            const quotationData = options.quotationData || buildQuotationData(formData, {
+                status: options.status || 'pending',
+                paymentMethod: options.paymentMethod || null,
+                paymentConfirmation: options.paymentConfirmation || null
+            });
+            const saveResult = await FirebaseDB.saveQuotation(quotationData);
+            if (!saveResult.success) {
+                showMessage(`No pudimos guardar el pedido en la nube: ${saveResult.error}`, 'error');
+            }
+        }
+
+        if (viaEmail) {
+            openMailto(formData, message);
+        } else {
+            openWhatsApp(message);
+        }
+
+        if (orderOverlay) {
+            orderOverlay.style.display = 'flex';
+            orderOverlay.setAttribute('aria-hidden', 'false');
+        }
+
+        clearCart();
+        orderForm?.reset();
+        prefillOrderFromUser(user);
+        prefillContactSubject();
+        return true;
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalContent || `Enviar pedido por WhatsApp <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>`;
+        }
+    }
+}
+
 // --- Init cotizador ---
 function initCotizador() {
     renderServiceChoices();
@@ -565,15 +901,7 @@ function initOrderForm() {
     const orderForm = document.getElementById('order-form');
     const orderOverlay = document.getElementById('order-success-overlay');
 
-    const orderFields = [
-        { id: 'order-name', errorId: 'error-order-name', check: v => v.trim().length > 2 },
-        { id: 'order-email', errorId: 'error-order-email', check: v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()) },
-        { id: 'order-phone', errorId: 'error-order-phone', check: v => v.trim().length >= 8 },
-        { id: 'order-date', errorId: 'error-order-date', check: v => v.trim().length > 0 },
-        { id: 'order-brief', errorId: 'error-order-brief', check: v => v.trim().length >= 20 }
-    ];
-
-    orderFields.forEach(field => {
+    ORDER_FIELD_RULES.forEach(field => {
         const inputEl = document.getElementById(field.id);
         const errorEl = document.getElementById(field.errorId);
         inputEl.addEventListener('input', () => {
@@ -584,72 +912,14 @@ function initOrderForm() {
         });
     });
 
-    const validateOrder = () => {
-        let valid = true;
-        orderFields.forEach(field => {
-            const inputEl = document.getElementById(field.id);
-            const errorEl = document.getElementById(field.errorId);
-            if (!field.check(inputEl.value)) {
-                inputEl.classList.add('invalid');
-                errorEl.style.display = 'block';
-                valid = false;
-            } else {
-                inputEl.classList.remove('invalid');
-                errorEl.style.display = 'none';
-            }
-        });
-        return valid;
-    };
-
-    const getFormData = () => ({
-        name: document.getElementById('order-name').value.trim(),
-        email: document.getElementById('order-email').value.trim(),
-        phone: document.getElementById('order-phone').value.trim(),
-        company: document.getElementById('order-company').value.trim(),
-        date: document.getElementById('order-date').value,
-        brief: document.getElementById('order-brief').value.trim()
-    });
-
-    const submitOrder = (viaEmail = false) => {
-        if (!validateOrder()) return;
-        if (cart.length === 0) {
-            alert('Agrega al menos un servicio al carrito antes de enviar el pedido, o usa el formulario de contacto para consultas generales.');
-            return;
-        }
-
-        const formData = getFormData();
-        const message = buildOrderMessage(formData);
-
-        localStorage.setItem('innovationtech_last_order', JSON.stringify({ formData, cart, date: new Date().toISOString() }));
-
-        const submitBtn = document.getElementById('btn-submit-order');
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Enviando...';
-
-        setTimeout(() => {
-            if (viaEmail) {
-                openMailto(formData, message);
-            } else {
-                openWhatsApp(message);
-            }
-
-            orderOverlay.style.display = 'flex';
-            orderOverlay.setAttribute('aria-hidden', 'false');
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = `Enviar pedido por WhatsApp <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>`;
-
-            clearCart();
-            orderForm.reset();
-            prefillContactSubject();
-        }, 800);
-    };
-
     orderForm.addEventListener('submit', e => {
         e.preventDefault();
-        submitOrder(false);
+        void submitOrder(false);
     });
 
-    document.getElementById('btn-submit-order-email').addEventListener('click', () => submitOrder(true));
+    document.getElementById('btn-submit-order-email').addEventListener('click', () => {
+        void submitOrder(true);
+    });
 
     document.getElementById('btn-order-success-close').addEventListener('click', () => {
         orderOverlay.style.display = 'none';
@@ -666,156 +936,16 @@ function initOrderForm() {
     const btnConfirmSend = document.getElementById('btn-confirm-send');
 
     btnPreview.addEventListener('click', () => {
-        if (!validateOrder()) return;
-        if (cart.length === 0) {
-            alert('Agrega al menos un servicio al carrito antes de ver la vista previa.');
-            return;
-        }
         showPreview();
     });
 
     btnClosePreview.addEventListener('click', closePreview);
     btnEditPreview.addEventListener('click', closePreview);
 
-    btnConfirmSend.addEventListener('click', () => {
+    btnConfirmSend?.addEventListener('click', () => {
         closePreview();
-        submitOrder(false);
+        void submitOrder(false);
     });
-
-    function showPreview() {
-        const formData = getFormData();
-        const previewContent = document.getElementById('preview-content');
-        
-        let html = '';
-
-        // Información del cliente
-        html += `
-            <div class="preview-section">
-                <div class="preview-section-title">
-                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                    </svg>
-                    Información del Cliente
-                </div>
-                <div class="preview-section-content">
-                    <div class="preview-info-row">
-                        <span class="preview-info-label">Nombre:</span>
-                        <span class="preview-info-value">${formData.name}</span>
-                    </div>
-                    <div class="preview-info-row">
-                        <span class="preview-info-label">Email:</span>
-                        <span class="preview-info-value">${formData.email}</span>
-                    </div>
-                    <div class="preview-info-row">
-                        <span class="preview-info-label">WhatsApp:</span>
-                        <span class="preview-info-value">${formData.phone}</span>
-                    </div>
-                    ${formData.company ? `
-                    <div class="preview-info-row">
-                        <span class="preview-info-label">Empresa:</span>
-                        <span class="preview-info-value">${formData.company}</span>
-                    </div>
-                    ` : ''}
-                    <div class="preview-info-row">
-                        <span class="preview-info-label">Fecha de entrega:</span>
-                        <span class="preview-info-value">${formData.date}</span>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        // Servicios contratados
-        html += `
-            <div class="preview-section">
-                <div class="preview-section-title">
-                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                    </svg>
-                    Servicios Contratados
-                </div>
-                <div class="preview-section-content">
-        `;
-
-        cart.forEach((item, i) => {
-            const svc = SERVICES[item.serviceId];
-            const deliverables = svc && svc.deliverables && svc.deliverables[item.tier] ? svc.deliverables[item.tier] : [];
-            
-            html += `
-                <div class="preview-service-item">
-                    <div class="preview-service-header">
-                        <div>
-                            <h4 class="preview-service-title">${i + 1}. ${item.serviceName}</h4>
-                            <div class="preview-service-tier">${item.tierLabel}${item.qty > 1 ? ` × ${item.qty}` : ''}</div>
-                        </div>
-                        <div class="preview-service-price">${formatUSD(item.total)}</div>
-                    </div>
-            `;
-
-            if (deliverables.length > 0) {
-                html += `
-                    <div class="preview-deliverables">
-                        <div class="preview-deliverables-title">
-                            📋 Incluye:
-                        </div>
-                        <ul class="preview-deliverables-list">
-                            ${deliverables.map(d => `<li>${d}</li>`).join('')}
-                        </ul>
-                    </div>
-                `;
-            }
-
-            const extrasLabels = [];
-            if (item.extras.rush) extrasLabels.push('⚡ Entrega urgente');
-            if (item.extras.lang) extrasLabels.push('🌐 Idioma adicional');
-            if (item.extras.revisions) extrasLabels.push('✏️ Revisiones extra');
-
-            if (extrasLabels.length > 0) {
-                html += `
-                    <div class="preview-extras">
-                        <div class="preview-extras-title">Extras:</div>
-                        <div class="preview-extras-list">
-                            ${extrasLabels.map(label => `<span class="preview-extra-badge">${label}</span>`).join('')}
-                        </div>
-                    </div>
-                `;
-            }
-
-            html += `</div>`;
-        });
-
-        html += `
-                    <div class="preview-total">
-                        <span class="preview-total-label">Total del Proyecto:</span>
-                        <span class="preview-total-amount">${formatUSD(getCartTotal())}</span>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        // Brief del proyecto
-        html += `
-            <div class="preview-section">
-                <div class="preview-section-title">
-                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                    </svg>
-                    Brief del Proyecto
-                </div>
-                <div class="preview-brief">${formData.brief}</div>
-            </div>
-        `;
-
-        previewContent.innerHTML = html;
-        previewModal.style.display = 'flex';
-        previewModal.setAttribute('aria-hidden', 'false');
-        document.body.style.overflow = 'hidden';
-    }
-
-    function closePreview() {
-        previewModal.style.display = 'none';
-        previewModal.setAttribute('aria-hidden', 'true');
-        document.body.style.overflow = '';
-    }
 
     // Cerrar modal al hacer clic fuera
     previewModal.addEventListener('click', (e) => {
@@ -828,6 +958,7 @@ function initOrderForm() {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     dateInput.min = tomorrow.toISOString().split('T')[0];
+    prefillOrderFromUser(getCurrentAuthenticatedUser());
 }
 
 // --- Contact form (existing) ---
@@ -1237,6 +1368,12 @@ function initPaymentSystem() {
 }
 
 function openPaymentModal() {
+    if (!requireAuthenticatedUser() || !validateOrder()) return;
+    if (cart.length === 0) {
+        alert('Agrega al menos un servicio al carrito antes de proceder al pago.');
+        return;
+    }
+
     const paymentModal = document.getElementById('payment-modal');
     const previewModal = document.getElementById('preview-modal');
     const total = getCartTotal();
@@ -1258,30 +1395,7 @@ function openPaymentModal() {
     
     // Preparar datos de cotización
     const formData = getFormData();
-    currentQuotationData = {
-        customerName: formData.name,
-        customerEmail: formData.email,
-        customerPhone: formData.phone,
-        customerCompany: formData.company || null,
-        deliveryDate: formData.date,
-        brief: formData.brief,
-        services: cart.map(item => ({
-            serviceId: item.serviceId,
-            serviceName: item.serviceName,
-            tier: item.tier,
-            tierLabel: item.tierLabel,
-            quantity: item.qty,
-            basePrice: item.basePrice,
-            total: item.total,
-            deliverables: SERVICES[item.serviceId]?.deliverables?.[item.tier] || [],
-            extras: item.extras
-        })),
-        subtotal: total,
-        total: total,
-        status: 'pending',
-        paymentMethod: null,
-        paymentConfirmation: null
-    };
+    currentQuotationData = buildQuotationData(formData);
 }
 
 function closePaymentModal() {
@@ -1316,9 +1430,16 @@ function selectPaymentMethod(method) {
 }
 
 async function handlePaymentCompletion() {
-    const selectedMethod = document.querySelector('input[name="payment-method"]:checked').value;
+    if (!requireAuthenticatedUser()) return;
+
+    const selectedMethod = document.querySelector('input[name="payment-method"]:checked')?.value;
     const btnComplete = document.getElementById('btn-complete-payment');
     const btnText = document.getElementById('payment-btn-text');
+
+    if (!selectedMethod) {
+        alert('Selecciona un método de pago antes de continuar.');
+        return;
+    }
     
     btnComplete.disabled = true;
     btnText.textContent = 'Procesando...';
@@ -1342,24 +1463,34 @@ async function handlePaymentCompletion() {
             case 'chime':
                 paymentResult = await processManualPayment('chime', 'chime-confirmation');
                 break;
+            default:
+                paymentResult = {
+                    success: false,
+                    error: 'Método de pago no disponible'
+                };
         }
         
         if (paymentResult.success) {
             // Guardar en Firebase
-            currentQuotationData.paymentMethod = selectedMethod;
-            currentQuotationData.paymentConfirmation = paymentResult.confirmation;
-            currentQuotationData.status = 'paid';
+            const paidQuotation = {
+                ...(currentQuotationData || buildQuotationData(getFormData())),
+                paymentMethod: selectedMethod,
+                paymentConfirmation: paymentResult.confirmation,
+                status: 'paid'
+            };
             
             if (window.FirebaseDB) {
-                const saveResult = await FirebaseDB.saveQuotation(currentQuotationData);
+                const saveResult = await FirebaseDB.saveQuotation(paidQuotation);
                 if (saveResult.success) {
                     console.log('✅ Cotización guardada en Firebase:', saveResult.id);
+                } else {
+                    showMessage(`El pago se procesó, pero no pudimos guardar el pedido en la nube: ${saveResult.error}`, 'error');
                 }
             }
             
             // Cerrar modal de pago y enviar por WhatsApp
             closePaymentModal();
-            submitOrder(false);
+            await submitOrder(false, { skipFirebaseSave: true });
             
             // Mostrar mensaje de éxito
             alert('¡Pago completado exitosamente! Serás redirigido a WhatsApp.');
@@ -1430,21 +1561,23 @@ function initAuthSystem() {
     const authForm = document.getElementById('auth-form');
     const btnSwitchAuth = document.getElementById('btn-switch-auth');
     const btnGoogleSignin = document.getElementById('btn-google-signin');
-    const btnGuestAccess = document.getElementById('btn-guest-access');
     const btnForgotPassword = document.getElementById('btn-forgot-password');
     const userMenu = document.getElementById('user-menu');
     const btnLogout = document.getElementById('btn-logout');
     const btnMyOrders = document.getElementById('btn-my-orders');
+    const ordersModal = document.getElementById('orders-modal');
+    const btnCloseOrders = document.getElementById('btn-close-orders');
     
-    let isSignUpMode = false;
-    
+    if (window.FirebaseDB) {
+        FirebaseDB.initialize();
+    }
+
     // Verificar estado de autenticación al cargar
     if (window.FirebaseDB) {
         onAuthStateChanged((user) => {
             if (user) {
                 showUserMenu(user);
-            } else if (isGuestMode()) {
-                showGuestMenu();
+                prefillOrderFromUser(user);
             } else {
                 showAuthButton();
             }
@@ -1493,6 +1626,7 @@ function initAuthSystem() {
             if (result.success) {
                 closeAuthModal();
                 showUserMenu(result.user);
+                prefillOrderFromUser(result.user);
                 showMessage('¡Bienvenido! Has iniciado sesión correctamente.', 'success');
             } else {
                 showMessage(result.error, 'error');
@@ -1511,18 +1645,6 @@ function initAuthSystem() {
         });
     }
     
-    // Continuar como invitado
-    if (btnGuestAccess) {
-        btnGuestAccess.addEventListener('click', () => {
-            const result = continueAsGuest();
-            if (result.success) {
-                closeAuthModal();
-                showGuestMenu();
-                showMessage('Continuando como invitado. Tus datos se guardarán localmente.', 'info');
-            }
-        });
-    }
-    
     // Formulario de autenticación
     if (authForm) {
         authForm.addEventListener('submit', async (e) => {
@@ -1531,6 +1653,7 @@ function initAuthSystem() {
             const email = document.getElementById('auth-email').value.trim();
             const password = document.getElementById('auth-password').value;
             const name = document.getElementById('auth-name')?.value.trim();
+            const isSignUpMode = document.getElementById('auth-modal-title').textContent === 'Crear Cuenta';
             
             const btnSubmit = document.getElementById('btn-auth-submit');
             const submitText = document.getElementById('auth-submit-text');
@@ -1548,6 +1671,7 @@ function initAuthSystem() {
             if (result.success) {
                 closeAuthModal();
                 showUserMenu(result.user);
+                prefillOrderFromUser(result.user);
                 showMessage(isSignUpMode ? '¡Cuenta creada exitosamente!' : '¡Bienvenido de nuevo!', 'success');
             } else {
                 showMessage(result.error, 'error');
@@ -1579,18 +1703,11 @@ function initAuthSystem() {
     if (btnLogout) {
         btnLogout.addEventListener('click', async (e) => {
             e.preventDefault();
-            
-            if (isGuestMode()) {
-                localStorage.removeItem('innovationtech_guest_mode');
-                localStorage.removeItem('innovationtech_guest_id');
+
+            const result = await signOut();
+            if (result.success) {
                 showAuthButton();
-                showMessage('Sesión de invitado cerrada.', 'info');
-            } else {
-                const result = await signOut();
-                if (result.success) {
-                    showAuthButton();
-                    showMessage('Sesión cerrada correctamente.', 'success');
-                }
+                showMessage('Sesión cerrada correctamente.', 'success');
             }
         });
     }
@@ -1600,6 +1717,16 @@ function initAuthSystem() {
         btnMyOrders.addEventListener('click', (e) => {
             e.preventDefault();
             showMyOrders();
+        });
+    }
+
+    if (btnCloseOrders) {
+        btnCloseOrders.addEventListener('click', closeOrdersModal);
+    }
+
+    if (ordersModal) {
+        ordersModal.addEventListener('click', (e) => {
+            if (e.target === ordersModal) closeOrdersModal();
         });
     }
     
@@ -1692,21 +1819,6 @@ function showUserMenu(user) {
     }
 }
 
-function showGuestMenu() {
-    const btnAuth = document.getElementById('btn-auth');
-    const userMenu = document.getElementById('user-menu');
-    const userName = document.getElementById('user-name');
-    const userAvatar = document.getElementById('user-avatar');
-    
-    if (btnAuth) btnAuth.style.display = 'none';
-    if (userMenu) userMenu.style.display = 'flex';
-    
-    if (userName) userName.textContent = 'Invitado';
-    if (userAvatar) {
-        userAvatar.src = 'https://ui-avatars.com/api/?name=Invitado&background=64748b&color=fff';
-    }
-}
-
 function showMessage(message, type = 'info') {
     const authMessage = document.getElementById('auth-message');
     if (!authMessage) return;
@@ -1721,8 +1833,110 @@ function showMessage(message, type = 'info') {
     }, 5000);
 }
 
-function showMyOrders() {
-    alert('Funcionalidad de "Mis Pedidos" en desarrollo. Aquí podrás ver el historial de tus pedidos.');
+function closeOrdersModal() {
+    const ordersModal = document.getElementById('orders-modal');
+    if (!ordersModal) return;
+
+    ordersModal.style.display = 'none';
+    ordersModal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+}
+
+function formatOrderDate(createdAt) {
+    if (!createdAt) return 'Fecha pendiente';
+
+    const date = typeof createdAt.toDate === 'function'
+        ? createdAt.toDate()
+        : new Date(createdAt);
+
+    if (Number.isNaN(date.getTime())) return 'Fecha pendiente';
+    return date.toLocaleDateString('es-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+    });
+}
+
+function getOrderStatusLabel(status) {
+    const labels = {
+        pending: 'Pendiente',
+        paid: 'Pagado',
+        completed: 'Completado',
+        cancelled: 'Cancelado'
+    };
+    return labels[status] || 'Pendiente';
+}
+
+function renderOrdersList(orders) {
+    const ordersList = document.getElementById('orders-list');
+    if (!ordersList) return;
+
+    if (!orders.length) {
+        ordersList.innerHTML = `
+            <div class="orders-empty">
+                <h4>Aún no tienes pedidos</h4>
+                <p>Agrega servicios al carrito y completa la contratación para ver tu historial aquí.</p>
+                <a href="#services" class="btn btn-primary" onclick="closeOrdersModal()">Ver servicios</a>
+            </div>
+        `;
+        return;
+    }
+
+    ordersList.innerHTML = orders.map(order => {
+        const services = Array.isArray(order.services) ? order.services : [];
+        const serviceSummary = services.length
+            ? services.map(service => escapeHTML(service.serviceName || service.tierLabel || 'Servicio')).join(', ')
+            : 'Pedido de servicios';
+
+        return `
+            <article class="order-history-card">
+                <div class="order-history-header">
+                    <div>
+                        <span class="order-history-id">#${escapeHTML(order.id || 'local')}</span>
+                        <h4>${serviceSummary}</h4>
+                    </div>
+                    <span class="order-status order-status-${escapeHTML(order.status || 'pending')}">${getOrderStatusLabel(order.status)}</span>
+                </div>
+                <div class="order-history-meta">
+                    <span>${formatOrderDate(order.createdAt || order.localId)}</span>
+                    <span>${formatUSD(order.total || 0)}</span>
+                    ${order.paymentMethod ? `<span>Pago: ${escapeHTML(order.paymentMethod)}</span>` : ''}
+                </div>
+                ${order.brief ? `<p class="order-history-brief">${escapeHTML(order.brief)}</p>` : ''}
+            </article>
+        `;
+    }).join('');
+}
+
+async function showMyOrders() {
+    const user = requireAuthenticatedUser();
+    if (!user) return;
+
+    const ordersModal = document.getElementById('orders-modal');
+    const ordersList = document.getElementById('orders-list');
+    if (!ordersModal || !ordersList) return;
+
+    ordersModal.style.display = 'flex';
+    ordersModal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    ordersList.innerHTML = '<div class="orders-loading">Cargando tus pedidos...</div>';
+
+    if (!window.FirebaseDB || typeof FirebaseDB.getUserQuotations !== 'function') {
+        renderOrdersList([]);
+        return;
+    }
+
+    const result = await FirebaseDB.getUserQuotations(user.uid);
+    if (result.success) {
+        renderOrdersList(result.data);
+    } else {
+        ordersList.innerHTML = `
+            <div class="orders-empty">
+                <h4>No pudimos cargar tus pedidos</h4>
+                <p>${escapeHTML(result.error || 'Inténtalo nuevamente en unos minutos.')}</p>
+            </div>
+        `;
+    }
 }
 
 // Inicializar sistema de autenticación cuando el DOM esté listo
