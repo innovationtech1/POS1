@@ -43,6 +43,8 @@
     
     /* Layout */
     --max-width: 1280px;
+    --content-width: 1120px;
+    --narrow-content-width: 920px;
     --header-height: 80px;
     
     /* Fonts */
@@ -169,7 +171,7 @@ p {
     width: 100%;
     max-width: var(--max-width);
     margin: 0 auto;
-    padding: 0 clamp(1rem, 4vw, 1.5rem);
+    padding: 0 clamp(1rem, 4vw, 2rem);
 }
 
 .text-gradient {
@@ -189,7 +191,7 @@ p {
 
 .section-header {
     text-align: center;
-    max-width: 650px;
+    max-width: 760px;
     margin: 0 auto 4rem auto;
 }
 
@@ -393,10 +395,16 @@ body.menu-open {
     grid-template-columns: 1.1fr 0.9fr;
     gap: 4rem;
     align-items: center;
+    max-width: var(--content-width);
+    margin: 0 auto;
 }
 
 .hero-content {
     z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
 }
 
 .badge {
@@ -442,9 +450,11 @@ body.menu-open {
     margin-bottom: 1.25rem;
     padding: 0.85rem 1.25rem;
     background: linear-gradient(135deg, rgba(0, 31, 204, 0.06) 0%, rgba(230, 0, 0, 0.08) 100%);
-    border-left: 3px solid var(--color-primary);
-    border-radius: 0 12px 12px 0;
+    border-top: 3px solid var(--color-primary);
+    border-radius: 12px;
     max-width: 420px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .hero-slogan-main {
@@ -470,6 +480,8 @@ body.menu-open {
     color: var(--text-gray);
     margin-bottom: 2.5rem;
     max-width: 550px;
+    margin-left: auto;
+    margin-right: auto;
     min-height: 3.6em;
     line-height: 1.5;
 }
@@ -477,6 +489,8 @@ body.menu-open {
 .hero-actions {
     display: flex;
     gap: 1.25rem;
+    justify-content: center;
+    flex-wrap: wrap;
 }
 
 /* Hero Carousel */
@@ -721,6 +735,8 @@ body.menu-open {
     grid-template-columns: repeat(4, 1fr);
     gap: 2rem;
     text-align: center;
+    max-width: var(--content-width);
+    margin: 0 auto;
 }
 
 .stat-item h3 {
@@ -743,8 +759,11 @@ body.menu-open {
 /* Services section */
 .services-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
     gap: 2rem;
+    max-width: var(--content-width);
+    margin: 0 auto;
+    justify-items: center;
 }
 
 .service-card {
@@ -758,6 +777,10 @@ body.menu-open {
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    align-items: center;
+    text-align: center;
+    width: 100%;
+    max-width: 360px;
 }
 
 .service-card::before {
@@ -792,7 +815,7 @@ body.menu-open {
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 1.5rem;
+    margin: 0 auto 1.5rem;
     color: var(--color-primary);
     font-size: 1.5rem;
     transition: var(--transition-normal);
@@ -846,7 +869,7 @@ body.menu-open {
     backdrop-filter: var(--glass-blur);
     border-radius: 24px;
     padding: 3rem;
-    max-width: 960px;
+    max-width: var(--narrow-content-width);
     margin: 0 auto;
     box-shadow: var(--shadow-lg);
 }
@@ -860,8 +883,9 @@ body.menu-open {
 .config-inputs h3 {
     margin-bottom: 1.5rem;
     font-size: 1.5rem;
-    border-left: 3px solid var(--color-primary);
-    padding-left: 0.75rem;
+    text-align: center;
+    border-bottom: 3px solid var(--color-primary);
+    padding-bottom: 0.75rem;
 }
 
 .form-group-config {
@@ -1127,12 +1151,17 @@ body.menu-open {
     display: grid;
     grid-template-columns: 0.8fr 1.2fr;
     gap: 4rem;
+    max-width: var(--content-width);
+    margin: 0 auto;
+    align-items: start;
 }
 
 .contact-info {
     display: flex;
     flex-direction: column;
     gap: 2rem;
+    align-items: center;
+    text-align: center;
 }
 
 .contact-info h3 {
@@ -1144,6 +1173,9 @@ body.menu-open {
     display: flex;
     align-items: flex-start;
     gap: 1.25rem;
+    width: 100%;
+    max-width: 380px;
+    text-align: left;
 }
 
 .contact-icon {
@@ -1187,6 +1219,10 @@ body.menu-open {
     padding: 3rem;
     box-shadow: var(--shadow-lg);
     position: relative;
+    width: 100%;
+    max-width: 720px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .form-row {
@@ -1544,6 +1580,10 @@ textarea.form-input {
 
 /* Tablet (≤1024px) */
 @media (max-width: 1024px) {
+    .container {
+        max-width: 960px;
+    }
+
     .section-header h2 {
         font-size: clamp(1.75rem, 4vw, 2.25rem);
     }
@@ -1593,8 +1633,9 @@ textarea.form-input {
     }
 
     .services-grid {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
         gap: 1.5rem;
+        max-width: 760px;
     }
 
     .configurator-wrap {
@@ -1615,6 +1656,7 @@ textarea.form-input {
     .contact-grid {
         grid-template-columns: 1fr;
         gap: 2.5rem;
+        max-width: 760px;
     }
 
     .footer-grid {
@@ -1625,6 +1667,7 @@ textarea.form-input {
     .order-grid {
         grid-template-columns: 1fr;
         gap: 2rem;
+        max-width: 760px;
     }
 
     .choice-grid-services {
@@ -1686,8 +1729,14 @@ textarea.form-input {
         padding: 4.5rem 0;
     }
 
+    .container {
+        padding-left: clamp(1rem, 5vw, 1.5rem);
+        padding-right: clamp(1rem, 5vw, 1.5rem);
+    }
+
     .section-header {
         margin-bottom: 2.5rem;
+        max-width: 100%;
     }
 
     .section-header p {
@@ -1728,10 +1777,12 @@ textarea.form-input {
 
     .services-grid {
         grid-template-columns: 1fr;
+        max-width: 420px;
     }
 
     .service-card {
         padding: 2rem 1.5rem;
+        max-width: 100%;
     }
 
     .testimonials-grid {
@@ -1783,8 +1834,9 @@ textarea.form-input {
     }
 
     .pricing-table-wrap {
-        margin: 0 -0.25rem;
+        margin: 0 auto;
         border-radius: 12px;
+        max-width: 100%;
     }
 
     .pricing-features-note {
@@ -1843,6 +1895,7 @@ textarea.form-input {
     .contact-form-container {
         padding: 1.5rem;
         border-radius: 18px;
+        max-width: 100%;
     }
 
     .order-submit-actions .btn {
@@ -1857,7 +1910,7 @@ textarea.form-input {
 
     .hero-slogan {
         max-width: 100%;
-        text-align: left;
+        text-align: center;
     }
 
     .hero-slogan-accent {
@@ -1893,6 +1946,11 @@ textarea.form-input {
         padding: 3.5rem 0;
     }
 
+    .container {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
     .hero-title {
         font-size: 1.85rem;
     }
@@ -1904,6 +1962,7 @@ textarea.form-input {
 
     .stats-grid {
         grid-template-columns: 1fr 1fr;
+        gap: 0.9rem;
     }
 
     .stat-item h3 {
@@ -2058,6 +2117,9 @@ textarea.form-input {
     overflow-x: auto;
     border-radius: 16px;
     border: 1px solid var(--glass-border);
+    max-width: var(--content-width);
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .pricing-table {
@@ -2099,6 +2161,9 @@ textarea.form-input {
     backdrop-filter: var(--glass-blur);
     border-radius: 12px;
     text-align: center;
+    max-width: var(--content-width);
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .pricing-features-note p {
@@ -2222,6 +2287,8 @@ textarea.form-input {
     grid-template-columns: 0.9fr 1.1fr;
     gap: 2.5rem;
     align-items: start;
+    max-width: var(--content-width);
+    margin: 0 auto;
 }
 
 .order-cart-panel,
@@ -2238,8 +2305,9 @@ textarea.form-input {
 .order-form-title {
     font-size: 1.35rem;
     margin-bottom: 1.5rem;
-    border-left: 3px solid var(--color-primary);
-    padding-left: 0.75rem;
+    text-align: center;
+    border-bottom: 3px solid var(--color-primary);
+    padding-bottom: 0.75rem;
 }
 
 .cart-empty {
@@ -3739,8 +3807,71 @@ textarea.form-input {
     font-size: 0.9rem;
 }
 
+/* Final responsive layout safeguards */
+@media (max-width: 1024px) {
+    .hero-grid,
+    .contact-grid,
+    .order-grid,
+    .configurator-steps {
+        grid-template-columns: 1fr;
+    }
+
+    .hero-grid,
+    .contact-grid,
+    .order-grid,
+    .configurator-wrap {
+        max-width: min(100%, 760px);
+        margin-left: auto;
+        margin-right: auto;
+    }
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
+    .hero-grid,
+    .contact-grid,
+    .order-grid,
+    .configurator-steps {
+        grid-template-columns: 1fr;
+        justify-items: center;
+        text-align: center;
+    }
+
+    .order-grid,
+    .contact-grid,
+    .configurator-wrap,
+    .pricing-table-wrap,
+    .pricing-features-note {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .choice-grid,
+    .choice-grid-services,
+    .choice-grid-tiers {
+        grid-template-columns: 1fr;
+    }
+
+    .contact-method {
+        max-width: 100%;
+    }
+
+    .order-submit-actions,
+    .quote-actions {
+        align-items: stretch;
+    }
+
+    .order-submit-actions .btn,
+    .quote-actions .btn,
+    .pricing-banner .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .pricing-table-wrap {
+        border-radius: 12px;
+    }
+
     .qr-code-container {
         padding: 1rem;
     }
