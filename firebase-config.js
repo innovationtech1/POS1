@@ -23,6 +23,7 @@ const firebaseConfig = {
 // Inicializar Firebase
 let db = null;
 let analytics = null;
+let auth = null;
 
 function initializeFirebase() {
     try {
@@ -30,6 +31,9 @@ function initializeFirebase() {
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
         }
+        
+        // Inicializar Auth
+        auth = firebase.auth();
         
         // Inicializar Firestore
         db = firebase.firestore();
@@ -45,6 +49,177 @@ function initializeFirebase() {
         console.error('❌ Error al inicializar Firebase:', error);
         return false;
     }
+}
+
+// ========================================================================
+// Authentication Functions
+// ========================================================================
+
+// Sign in with Google
+async function signInWithGoogle() {
+    try {
+        if (!auth) {
+            throw new Error('Firebase Auth no está inicializado');
+        }
+
+        const provider = new firebase.auth.GoogleAuthProvider();
+        provider.addScope('profile');
+        provider.addScope('email');
+        
+        const result = await auth.signInWithPopup(provider);
+        const user = result.user;
+        
+        console.log('✅ Usuario autenticado con Google:', user.email);
+        
+        // Registrar evento en Analytics
+        if (analytics) {
+            analytics.logEvent('login', {
+                method: 'google'
+            });
+        }
+        
+        return { success: true, user: user };
+    } catch (error) {
+        console.error('❌ Error al iniciar sesión con Google:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// Sign in with Email/Password
+async function signInWithEmail(email, password) {
+    try {
+        if (!auth) {
+            throw new Error('Firebase Auth no está inicializado');
+        }
+
+        const result = await auth.signInWithEmailAndPassword(email, password);
+        const user = result.user;
+        
+        console.log('✅ Usuario autenticado con email:', user.email);
+        
+        // Registrar evento en Analytics
+        if (analytics) {
+            analytics.logEvent('login', {
+                method: 'email'
+            });
+        }
+        
+        return { success: true, user: user };
+    } catch (error) {
+        console.error('❌ Error al iniciar sesión:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// Sign up with Email/Password
+async function signUpWithEmail(email, password, displayName) {
+    try {
+        if (!auth) {
+            throw new Error('Firebase Auth no está inicializado');
+        }
+
+        const result = await auth.createUserWithEmailAndPassword(email, password);
+        const user = result.user;
+        
+        // Actualizar perfil con nombre
+        if (displayName) {
+            await user.updateProfile({
+                displayName: displayName
+            });
+        }
+        
+        console.log('✅ Usuario registrado:', user.email);
+        
+        // Registrar evento en Analytics
+        if (analytics) {
+            analytics.logEvent('sign_up', {
+                method: 'email'
+            });
+        }
+        
+        return { success: true, user: user };
+    } catch (error) {
+        console.error('❌ Error al registrar usuario:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// Sign out
+async function signOut() {
+    try {
+        if (!auth) {
+            throw new Error('Firebase Auth no está inicializado');
+        }
+
+        await auth.signOut();
+        console.log('✅ Sesión cerrada');
+        
+        return { success: true };
+    } catch (error) {
+        console.error('❌ Error al cerrar sesión:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// Reset password
+async function resetPassword(email) {
+    try {
+        if (!auth) {
+            throw new Error('Firebase Auth no está inicializado');
+        }
+
+        await auth.sendPasswordResetEmail(email);
+        console.log('✅ Email de recuperación enviado');
+        
+        return { success: true };
+    } catch (error) {
+        console.error('❌ Error al enviar email de recuperación:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// Get current user
+function getCurrentUser() {
+    if (!auth) {
+        return null;
+    }
+    return auth.currentUser;
+}
+
+// Continue as guest
+function continueAsGuest() {
+    try {
+        // Guardar en localStorage que el usuario es invitado
+        localStorage.setItem('innovationtech_guest_mode', 'true');
+        localStorage.setItem('innovationtech_guest_id', 'guest_' + Date.now());
+        
+        console.log('✅ Continuando como invitado');
+        
+        // Registrar evento en Analytics
+        if (analytics) {
+            analytics.logEvent('guest_access');
+        }
+        
+        return { success: true, isGuest: true };
+    } catch (error) {
+        console.error('❌ Error al continuar como invitado:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// Check if user is guest
+function isGuestMode() {
+    return localStorage.getItem('innovationtech_guest_mode') === 'true';
+}
+
+// Auth state observer
+function onAuthStateChanged(callback) {
+    if (!auth) {
+        console.warn('Firebase Auth no está inicializado');
+        return () => {};
+    }
+    
+    return auth.onAuthStateChanged(callback);
 }
 
 // Función para guardar cotización en Firebase
