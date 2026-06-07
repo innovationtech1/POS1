@@ -1265,7 +1265,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 // --- Payment System Integration ---
-const STRIPE_PUBLIC_KEY = 'pk_test_51DEMO_REPLACE_WITH_YOUR_KEY'; // REEMPLAZAR con tu clave real de Stripe
+const DEFAULT_STRIPE_PUBLIC_KEY = 'pk_test_51DEMO_REPLACE_WITH_YOUR_KEY';
+let stripePublicKey = DEFAULT_STRIPE_PUBLIC_KEY;
+let backendConfig = null;
+
+function getApiBaseUrl() {
+    if (window.INNOVATIONTECH_API_URL) {
+        return window.INNOVATIONTECH_API_URL.replace(/\/$/, '');
+    }
+
+    const isLocalStaticServer = ['localhost', '127.0.0.1'].includes(window.location.hostname)
+        && window.location.port
+        && window.location.port !== '3000';
+
+    return isLocalStaticServer ? 'http://localhost:3000' : '';
+}
+
+const API_BASE_URL = getApiBaseUrl();
 const PAYMENT_CONFIG = {
     cashApp: '$lilhector210',
     cashAppName: 'Hector De Hoyos',
@@ -1281,10 +1297,42 @@ let stripe = null;
 let cardElement = null;
 let currentQuotationData = null;
 
-function initPaymentSystem() {
+async function loadBackendConfig() {
+    if (backendConfig) return backendConfig;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/config`);
+        if (!response.ok) throw new Error('Backend no disponible');
+        backendConfig = await response.json();
+        if (backendConfig.stripePublishableKey) {
+            stripePublicKey = backendConfig.stripePublishableKey;
+        }
+    } catch (error) {
+        console.warn('⚠️ No se pudo cargar la configuración del backend:', error.message);
+        backendConfig = {
+            success: false,
+            stripeConfigured: false,
+            stripePublishableKey
+        };
+    }
+
+    return backendConfig;
+}
+
+function isDemoStripeKey(key) {
+    return !key || key.includes('DEMO_REPLACE') || key.includes('REPLACE_WITH');
+}
+
+async function initPaymentSystem() {
+    await loadBackendConfig();
+
     // Inicializar Stripe
     try {
-        stripe = Stripe(STRIPE_PUBLIC_KEY);
+        if (isDemoStripeKey(stripePublicKey)) {
+            throw new Error('Configura STRIPE_PUBLISHABLE_KEY en el backend.');
+        }
+
+        stripe = Stripe(stripePublicKey);
         const elements = stripe.elements();
         cardElement = elements.create('card', {
             style: {
@@ -1509,23 +1557,61 @@ async function handlePaymentCompletion() {
 async function processStripePayment() {
     try {
         if (!stripe || !cardElement) {
-            throw new Error('Stripe no está configurado correctamente');
+            throw new Error('Stripe no está configurado correctamente. Revisa STRIPE_PUBLISHABLE_KEY y STRIPE_SECRET_KEY en el backend.');
         }
-        
-        // Crear token de pago
-        const {token, error} = await stripe.createToken(cardElement);
-        
+
+        const user = getCurrentAuthenticatedUser();
+        if (!user || typeof user.getIdToken !== 'function') {
+            throw new Error('Debes iniciar sesión para pagar con tarjeta.');
+        }
+
+        if (!currentQuotationData) {
+            currentQuotationData = buildQuotationData(getFormData());
+        }
+
+        const idToken = await user.getIdToken();
+        const intentResponse = await fetch(`${API_BASE_URL}/api/payments/create-intent`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${idToken}`
+            },
+            body: JSON.stringify({
+                quotation: currentQuotationData,
+                currency: 'usd'
+            })
+        });
+
+        const intentData = await intentResponse.json().catch(() => ({}));
+        if (!intentResponse.ok || !intentData.success) {
+            throw new Error(intentData.error || 'Backend de pagos no disponible. Ejecuta npm run dev y configura Stripe en .env.');
+        }
+
+        const { paymentIntent, error } = await stripe.confirmCardPayment(intentData.clientSecret, {
+            payment_method: {
+                card: cardElement,
+                billing_details: {
+                    name: currentQuotationData.customerName,
+                    email: currentQuotationData.customerEmail,
+                    phone: currentQuotationData.customerPhone
+                }
+            }
+        });
+
         if (error) {
             throw new Error(error.message);
         }
-        
-        // Aquí normalmente enviarías el token a tu servidor
-        // Por ahora, simulamos un pago exitoso
-        console.log('✅ Token de Stripe creado:', token.id);
-        
+
+        const acceptedStatuses = ['succeeded', 'processing', 'requires_capture'];
+        if (!paymentIntent || !acceptedStatuses.includes(paymentIntent.status)) {
+            throw new Error(`El pago quedó en estado ${paymentIntent?.status || 'desconocido'}.`);
+        }
+
+        console.log('✅ PaymentIntent confirmado:', paymentIntent.id);
+
         return {
             success: true,
-            confirmation: token.id
+            confirmation: paymentIntent.id
         };
     } catch (error) {
         return {
