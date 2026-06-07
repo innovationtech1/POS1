@@ -3170,6 +3170,7 @@ textarea.form-input {
         max-height: calc(100vh - 2rem);
         border-radius: 16px;
         margin: 0;
+        width: 100%;
     }
     
     .payment-modal-header {
@@ -3188,6 +3189,7 @@ textarea.form-input {
 
     .payment-modal-body {
         padding: 1.25rem;
+        overflow-y: auto;
     }
 
     .payment-summary {
@@ -3218,6 +3220,7 @@ textarea.form-input {
 
     .payment-method-info p {
         font-size: 0.85rem;
+        word-break: break-word;
     }
 
     .payment-method-details {
@@ -3241,4 +3244,237 @@ textarea.form-input {
     .payment-modal-footer .btn {
         width: 100%;
     }
+    
+    /* QR Code responsive */
+    .qr-code-container {
+        padding: 1rem;
+        margin: 1rem 0;
+    }
+    
+    .qr-code-container img {
+        max-width: 240px !important;
+        width: 100%;
+        height: auto;
+    }
+    
+    /* Form inputs responsive */
+    .form-input {
+        font-size: 16px !important; /* Previene zoom en iOS */
+    }
+    
+    /* Payment instructions responsive */
+    .payment-instructions {
+        font-size: 0.9rem;
+    }
+    
+    .payment-instructions strong {
+        display: inline-block;
+        word-break: break-word;
+    }
 }
+
+/* Tablet adjustments */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .payment-modal-content {
+        max-width: 90%;
+    }
+    
+    .qr-code-container img {
+        max-width: 300px;
+    }
+}
+
+/* Small mobile devices */
+@media (max-width: 480px) {
+    .payment-modal-header h3 {
+        font-size: 1rem;
+    }
+    
+    .payment-method-card {
+        padding: 0.875rem;
+    }
+    
+    .payment-method-info h5 {
+        font-size: 0.9rem;
+    }
+    
+    .payment-method-info p {
+        font-size: 0.8rem;
+    }
+    
+    .qr-code-container img {
+        max-width: 200px !important;
+    }
+    
+    .payment-instructions p {
+        font-size: 0.85rem;
+    }
+    
+    .btn {
+        font-size: 0.9rem;
+        padding: 0.75rem 1.25rem;
+    }
+}
+
+
+/* Authentication Messages */
+.auth-message {
+    padding: 1rem;
+    border-radius: 8px;
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    display: none;
+    animation: slideDown 0.3s ease;
+}
+
+.auth-message-success {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: #10b981;
+}
+
+.auth-message-error {
+    background: rgba(230, 0, 0, 0.1);
+    border: 1px solid rgba(230, 0, 0, 0.3);
+    color: #e60000;
+}
+
+.auth-message-info {
+    background: rgba(0, 31, 204, 0.1);
+    border: 1px solid rgba(0, 31, 204, 0.3);
+    color: var(--color-primary);
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* QR Code Container Styles */
+.qr-code-container {
+    background: rgba(255, 255, 255, 0.02);
+    padding: 1.5rem;
+    border-radius: 12px;
+    border: 1px solid var(--glass-border);
+}
+
+.qr-code-container img {
+    display: block;
+    margin: 0 auto;
+}
+
+/* Payment Instructions Enhancement */
+.payment-instructions p {
+    margin: 0.75rem 0;
+    line-height: 1.6;
+}
+
+.payment-instructions strong {
+    color: var(--text-white);
+}
+
+/* User Dropdown */
+.user-dropdown {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    background: var(--bg-card);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 0.5rem;
+    min-width: 200px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.3s ease;
+    z-index: 1000;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.user-dropdown.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    color: var(--text-gray);
+    text-decoration: none;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.dropdown-item:hover {
+    background: var(--bg-card-hover);
+    color: var(--text-white);
+}
+
+.dropdown-item svg {
+    flex-shrink: 0;
+}
+
+/* User Menu */
+.user-menu {
+    position: relative;
+}
+
+.user-menu-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--bg-card);
+    border: 1px solid var(--glass-border);
+    border-radius: 50px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.user-menu-btn:hover {
+    border-color: var(--color-primary);
+    transform: translateY(-2px);
+}
+
+.user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+#user-name {
+    color: var(--text-white);
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .qr-code-container {
+        padding: 1rem;
+    }
+    
+    .qr-code-container img {
+        max-width: 240px !important;
+    }
+    
+    .user-menu-btn {
+        padding: 0.4rem 0.75rem;
+    }
+    
+    #user-name {
+        display: none;
+    }
+}
+
+/* Made with ❤️ by Bob */

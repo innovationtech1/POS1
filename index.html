@@ -29,7 +29,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
     <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
 
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/style.css">
     
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -472,16 +472,25 @@
                                                 </div>
                                                 <div class="payment-method-info">
                                                     <h5>Cash App</h5>
-                                                    <p>Envía a: <strong id="cashapp-tag">$InnovationTech</strong></p>
+                                                    <p>Escanea el código QR o envía a: <strong id="cashapp-tag">$lilhector210</strong></p>
                                                 </div>
                                                 <input type="radio" name="payment-method" value="cashapp">
                                             </div>
                                             <div class="payment-method-details" id="cashapp-details" style="display: none;">
                                                 <div class="payment-instructions">
+                                                    <div class="qr-code-container" style="text-align: center; margin: 1.5rem 0;">
+                                                        <img src="img/ba18bc24-fcae-4ec0-9699-59d76b248636.jpg" alt="Cash App QR Code" style="max-width: 280px; width: 100%; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
+                                                        <p style="margin-top: 1rem; font-weight: 600; color: var(--text-white);">Escanea este código con Cash App</p>
+                                                    </div>
+                                                    <div style="text-align: center; margin: 1rem 0; color: var(--text-gray);">
+                                                        <span style="display: inline-block; padding: 0 1rem;">o</span>
+                                                    </div>
+                                                    <p><strong>Opción manual:</strong></p>
                                                     <p>1. Abre tu app de Cash App</p>
-                                                    <p>2. Envía <strong id="cashapp-amount">$0.00</strong> a <strong>$InnovationTech</strong></p>
-                                                    <p>3. Ingresa el ID de confirmación aquí:</p>
-                                                    <input type="text" class="form-input" id="cashapp-confirmation" placeholder="ID de confirmación">
+                                                    <p>2. Envía <strong id="cashapp-amount" style="color: #00d54b;">$0.00</strong> a <strong style="color: #00d54b;">$lilhector210</strong></p>
+                                                    <p>3. Nombre del destinatario: <strong>Hector De Hoyos</strong></p>
+                                                    <p style="margin-top: 1rem;">4. Ingresa el ID de confirmación aquí:</p>
+                                                    <input type="text" class="form-input" id="cashapp-confirmation" placeholder="ID de confirmación de Cash App" style="margin-top: 0.5rem;">
                                                 </div>
                                             </div>
                                         </div>
@@ -494,16 +503,21 @@
                                                 </div>
                                                 <div class="payment-method-info">
                                                     <h5>Zelle</h5>
-                                                    <p>Envía a: <strong id="zelle-email">innovationtech@email.com</strong></p>
+                                                    <p>Envía a: <strong id="zelle-email">hectordehoyos053@gmail.com</strong></p>
                                                 </div>
                                                 <input type="radio" name="payment-method" value="zelle">
                                             </div>
                                             <div class="payment-method-details" id="zelle-details" style="display: none;">
                                                 <div class="payment-instructions">
+                                                    <p><strong>Instrucciones de pago:</strong></p>
                                                     <p>1. Abre tu app bancaria con Zelle</p>
-                                                    <p>2. Envía <strong id="zelle-amount">$0.00</strong> a <strong>innovationtech@email.com</strong></p>
-                                                    <p>3. Ingresa el ID de confirmación:</p>
-                                                    <input type="text" class="form-input" id="zelle-confirmation" placeholder="ID de confirmación">
+                                                    <p>2. Envía <strong id="zelle-amount" style="color: #6d1ed4;">$0.00</strong> a:</p>
+                                                    <p style="text-align: center; padding: 0.75rem; background: rgba(109, 30, 212, 0.1); border-radius: 8px; margin: 0.5rem 0;">
+                                                        <strong style="color: #6d1ed4; font-size: 1.1rem;">hectordehoyos053@gmail.com</strong>
+                                                    </p>
+                                                    <p>3. Nombre del destinatario: <strong>Hector De Hoyos</strong></p>
+                                                    <p style="margin-top: 1rem;">4. Ingresa el ID de confirmación de Zelle:</p>
+                                                    <input type="text" class="form-input" id="zelle-confirmation" placeholder="ID de confirmación de Zelle" style="margin-top: 0.5rem;">
                                                 </div>
                                             </div>
                                         </div>
@@ -516,16 +530,21 @@
                                                 </div>
                                                 <div class="payment-method-info">
                                                     <h5>PayPal</h5>
-                                                    <p>Envía a: <strong id="paypal-email">innovationtech@paypal.com</strong></p>
+                                                    <p>Envía a: <strong id="paypal-email">hectordehoyos053@gmail.com</strong></p>
                                                 </div>
                                                 <input type="radio" name="payment-method" value="paypal">
                                             </div>
                                             <div class="payment-method-details" id="paypal-details" style="display: none;">
                                                 <div class="payment-instructions">
-                                                    <p>1. Abre PayPal o visita <a href="https://paypal.com" target="_blank" rel="noopener">paypal.com</a></p>
-                                                    <p>2. Envía <strong id="paypal-amount">$0.00</strong> a <strong>innovationtech@paypal.com</strong></p>
-                                                    <p>3. Ingresa el ID de transacción:</p>
-                                                    <input type="text" class="form-input" id="paypal-confirmation" placeholder="ID de transacción">
+                                                    <p><strong>Instrucciones de pago:</strong></p>
+                                                    <p>1. Abre PayPal o visita <a href="https://paypal.com" target="_blank" rel="noopener" style="color: #0070ba;">paypal.com</a></p>
+                                                    <p>2. Envía <strong id="paypal-amount" style="color: #0070ba;">$0.00</strong> a:</p>
+                                                    <p style="text-align: center; padding: 0.75rem; background: rgba(0, 112, 186, 0.1); border-radius: 8px; margin: 0.5rem 0;">
+                                                        <strong style="color: #0070ba; font-size: 1.1rem;">hectordehoyos053@gmail.com</strong>
+                                                    </p>
+                                                    <p>3. Selecciona "Enviar dinero a amigos y familiares" para evitar comisiones</p>
+                                                    <p style="margin-top: 1rem;">4. Ingresa el ID de transacción de PayPal:</p>
+                                                    <input type="text" class="form-input" id="paypal-confirmation" placeholder="ID de transacción de PayPal" style="margin-top: 0.5rem;">
                                                 </div>
                                             </div>
                                         </div>
@@ -538,16 +557,22 @@
                                                 </div>
                                                 <div class="payment-method-info">
                                                     <h5>Chime</h5>
-                                                    <p>Envía a: <strong id="chime-email">innovationtech@chime.com</strong></p>
+                                                    <p>Envía a: <strong id="chime-tag">$lilhector210</strong></p>
                                                 </div>
                                                 <input type="radio" name="payment-method" value="chime">
                                             </div>
                                             <div class="payment-method-details" id="chime-details" style="display: none;">
                                                 <div class="payment-instructions">
+                                                    <p><strong>Instrucciones de pago:</strong></p>
                                                     <p>1. Abre tu app de Chime</p>
-                                                    <p>2. Envía <strong id="chime-amount">$0.00</strong> a <strong>innovationtech@chime.com</strong></p>
-                                                    <p>3. Ingresa el ID de confirmación:</p>
-                                                    <input type="text" class="form-input" id="chime-confirmation" placeholder="ID de confirmación">
+                                                    <p>2. Selecciona "Pay Friends"</p>
+                                                    <p>3. Envía <strong id="chime-amount" style="color: #00c853;">$0.00</strong> a:</p>
+                                                    <p style="text-align: center; padding: 0.75rem; background: rgba(0, 200, 83, 0.1); border-radius: 8px; margin: 0.5rem 0;">
+                                                        <strong style="color: #00c853; font-size: 1.1rem;">$lilhector210</strong>
+                                                    </p>
+                                                    <p>4. Nombre del destinatario: <strong>Hector De Hoyos</strong></p>
+                                                    <p style="margin-top: 1rem;">5. Ingresa el ID de confirmación de Chime:</p>
+                                                    <input type="text" class="form-input" id="chime-confirmation" placeholder="ID de confirmación de Chime" style="margin-top: 0.5rem;">
                                                 </div>
                                             </div>
                                         </div>
@@ -915,15 +940,12 @@
     </div>
 
     <!-- Firebase Configuration -->
-    <script src="firebase-config.js"></script>
+    <script src="js/firebase-config.js"></script>
     
     <!-- Biometric Authentication -->
-    <script src="biometric-auth.js"></script>
+    <script src="js/biometric-auth.js"></script>
     
     <!-- Main Script -->
-    <script src="script.js"></script>
-    
-    <!-- Auto Update -->
-    <script src="auto-update.js"></script>
+    <script src="js/script.js"></script>
 </body>
 </html>

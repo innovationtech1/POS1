@@ -27,3 +27,15 @@ dist/
 *.local
 
 # Made with Bob
+
+# Credenciales y archivos sensibles
+docs/CREDENCIALES-ADMIN.md
+**/credentials.json
+**/secrets.json
+**/*-credentials.md
+**/*-secrets.md
+
+# Archivos de configuración privados
+config/private/
+private/
+secrets/

@@ -1134,12 +1134,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 // --- Payment System Integration ---
-const STRIPE_PUBLIC_KEY = 'pk_test_51DEMO_REPLACE_WITH_YOUR_KEY'; // REEMPLAZAR con tu clave real
+const STRIPE_PUBLIC_KEY = 'pk_test_51DEMO_REPLACE_WITH_YOUR_KEY'; // REEMPLAZAR con tu clave real de Stripe
 const PAYMENT_CONFIG = {
-    cashApp: '$InnovationTech',
-    zelle: 'innovationtech@email.com',
-    paypal: 'innovationtech@paypal.com',
-    chime: 'innovationtech@chime.com'
+    cashApp: '$lilhector210',
+    cashAppName: 'Hector De Hoyos',
+    zelle: 'hectordehoyos053@gmail.com',
+    zelleName: 'Hector De Hoyos',
+    paypal: 'hectordehoyos053@gmail.com',
+    paypalName: 'Hector De Hoyos',
+    chime: '$lilhector210',
+    chimeName: 'Hector De Hoyos'
 };
 
 let stripe = null;
@@ -1416,3 +1420,316 @@ async function processManualPayment(method, confirmationInputId) {
         confirmation: confirmation
     };
 }
+
+
+// --- Authentication System ---
+function initAuthSystem() {
+    const btnAuth = document.getElementById('btn-auth');
+    const authModal = document.getElementById('auth-modal');
+    const btnCloseAuth = document.getElementById('btn-close-auth');
+    const authForm = document.getElementById('auth-form');
+    const btnSwitchAuth = document.getElementById('btn-switch-auth');
+    const btnGoogleSignin = document.getElementById('btn-google-signin');
+    const btnGuestAccess = document.getElementById('btn-guest-access');
+    const btnForgotPassword = document.getElementById('btn-forgot-password');
+    const userMenu = document.getElementById('user-menu');
+    const btnLogout = document.getElementById('btn-logout');
+    const btnMyOrders = document.getElementById('btn-my-orders');
+    
+    let isSignUpMode = false;
+    
+    // Verificar estado de autenticación al cargar
+    if (window.FirebaseDB) {
+        onAuthStateChanged((user) => {
+            if (user) {
+                showUserMenu(user);
+            } else if (isGuestMode()) {
+                showGuestMenu();
+            } else {
+                showAuthButton();
+            }
+        });
+    }
+    
+    // Abrir modal de autenticación
+    if (btnAuth) {
+        btnAuth.addEventListener('click', () => {
+            openAuthModal();
+        });
+    }
+    
+    // Cerrar modal
+    if (btnCloseAuth) {
+        btnCloseAuth.addEventListener('click', () => {
+            closeAuthModal();
+        });
+    }
+    
+    // Cerrar al hacer clic fuera
+    if (authModal) {
+        authModal.addEventListener('click', (e) => {
+            if (e.target === authModal) {
+                closeAuthModal();
+            }
+        });
+    }
+    
+    // Cambiar entre login y registro
+    if (btnSwitchAuth) {
+        btnSwitchAuth.addEventListener('click', (e) => {
+            e.preventDefault();
+            toggleAuthMode();
+        });
+    }
+    
+    // Google Sign In
+    if (btnGoogleSignin) {
+        btnGoogleSignin.addEventListener('click', async () => {
+            btnGoogleSignin.disabled = true;
+            btnGoogleSignin.innerHTML = '<span>Conectando...</span>';
+            
+            const result = await signInWithGoogle();
+            
+            if (result.success) {
+                closeAuthModal();
+                showUserMenu(result.user);
+                showMessage('¡Bienvenido! Has iniciado sesión correctamente.', 'success');
+            } else {
+                showMessage(result.error, 'error');
+            }
+            
+            btnGoogleSignin.disabled = false;
+            btnGoogleSignin.innerHTML = `
+                <svg width="20" height="20" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                <span>Continuar con Google</span>
+            `;
+        });
+    }
+    
+    // Continuar como invitado
+    if (btnGuestAccess) {
+        btnGuestAccess.addEventListener('click', () => {
+            const result = continueAsGuest();
+            if (result.success) {
+                closeAuthModal();
+                showGuestMenu();
+                showMessage('Continuando como invitado. Tus datos se guardarán localmente.', 'info');
+            }
+        });
+    }
+    
+    // Formulario de autenticación
+    if (authForm) {
+        authForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('auth-email').value.trim();
+            const password = document.getElementById('auth-password').value;
+            const name = document.getElementById('auth-name')?.value.trim();
+            
+            const btnSubmit = document.getElementById('btn-auth-submit');
+            const submitText = document.getElementById('auth-submit-text');
+            
+            btnSubmit.disabled = true;
+            submitText.textContent = isSignUpMode ? 'Registrando...' : 'Iniciando sesión...';
+            
+            let result;
+            if (isSignUpMode) {
+                result = await signUpWithEmail(email, password, name);
+            } else {
+                result = await signInWithEmail(email, password);
+            }
+            
+            if (result.success) {
+                closeAuthModal();
+                showUserMenu(result.user);
+                showMessage(isSignUpMode ? '¡Cuenta creada exitosamente!' : '¡Bienvenido de nuevo!', 'success');
+            } else {
+                showMessage(result.error, 'error');
+            }
+            
+            btnSubmit.disabled = false;
+            submitText.textContent = isSignUpMode ? 'Registrarse' : 'Iniciar Sesión';
+        });
+    }
+    
+    // Olvidé mi contraseña
+    if (btnForgotPassword) {
+        btnForgotPassword.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const email = prompt('Ingresa tu correo electrónico para recuperar tu contraseña:');
+            
+            if (email) {
+                const result = await resetPassword(email);
+                if (result.success) {
+                    showMessage('Se ha enviado un correo de recuperación. Revisa tu bandeja de entrada.', 'success');
+                } else {
+                    showMessage(result.error, 'error');
+                }
+            }
+        });
+    }
+    
+    // Cerrar sesión
+    if (btnLogout) {
+        btnLogout.addEventListener('click', async (e) => {
+            e.preventDefault();
+            
+            if (isGuestMode()) {
+                localStorage.removeItem('innovationtech_guest_mode');
+                localStorage.removeItem('innovationtech_guest_id');
+                showAuthButton();
+                showMessage('Sesión de invitado cerrada.', 'info');
+            } else {
+                const result = await signOut();
+                if (result.success) {
+                    showAuthButton();
+                    showMessage('Sesión cerrada correctamente.', 'success');
+                }
+            }
+        });
+    }
+    
+    // Mis pedidos
+    if (btnMyOrders) {
+        btnMyOrders.addEventListener('click', (e) => {
+            e.preventDefault();
+            showMyOrders();
+        });
+    }
+    
+    // Menú de usuario
+    const userMenuBtn = document.getElementById('user-menu-btn');
+    const userDropdown = document.getElementById('user-dropdown');
+    
+    if (userMenuBtn && userDropdown) {
+        userMenuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            userDropdown.classList.toggle('active');
+        });
+        
+        document.addEventListener('click', () => {
+            userDropdown.classList.remove('active');
+        });
+    }
+}
+
+function openAuthModal() {
+    const authModal = document.getElementById('auth-modal');
+    authModal.style.display = 'flex';
+    authModal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeAuthModal() {
+    const authModal = document.getElementById('auth-modal');
+    authModal.style.display = 'none';
+    authModal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+}
+
+function toggleAuthMode() {
+    const isSignUpMode = document.getElementById('auth-modal-title').textContent === 'Iniciar Sesión';
+    const authModalTitle = document.getElementById('auth-modal-title');
+    const authSubmitText = document.getElementById('auth-submit-text');
+    const authSwitchText = document.getElementById('auth-switch-text');
+    const authNameGroup = document.getElementById('auth-name-group');
+    const btnForgotPassword = document.getElementById('btn-forgot-password');
+    
+    if (isSignUpMode) {
+        authModalTitle.textContent = 'Crear Cuenta';
+        authSubmitText.textContent = 'Registrarse';
+        authSwitchText.innerHTML = '¿Ya tienes cuenta? <a href="#" id="btn-switch-auth">Inicia sesión</a>';
+        authNameGroup.style.display = 'block';
+        btnForgotPassword.style.display = 'none';
+    } else {
+        authModalTitle.textContent = 'Iniciar Sesión';
+        authSubmitText.textContent = 'Iniciar Sesión';
+        authSwitchText.innerHTML = '¿No tienes cuenta? <a href="#" id="btn-switch-auth">Regístrate</a>';
+        authNameGroup.style.display = 'none';
+        btnForgotPassword.style.display = 'block';
+    }
+    
+    // Re-attach event listener
+    document.getElementById('btn-switch-auth').addEventListener('click', (e) => {
+        e.preventDefault();
+        toggleAuthMode();
+    });
+}
+
+function showAuthButton() {
+    const btnAuth = document.getElementById('btn-auth');
+    const userMenu = document.getElementById('user-menu');
+    
+    if (btnAuth) btnAuth.style.display = 'flex';
+    if (userMenu) userMenu.style.display = 'none';
+}
+
+function showUserMenu(user) {
+    const btnAuth = document.getElementById('btn-auth');
+    const userMenu = document.getElementById('user-menu');
+    const userName = document.getElementById('user-name');
+    const userAvatar = document.getElementById('user-avatar');
+    
+    if (btnAuth) btnAuth.style.display = 'none';
+    if (userMenu) userMenu.style.display = 'flex';
+    
+    if (userName) {
+        userName.textContent = user.displayName || user.email.split('@')[0];
+    }
+    
+    if (userAvatar) {
+        if (user.photoURL) {
+            userAvatar.src = user.photoURL;
+        } else {
+            userAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || user.email)}&background=001fcc&color=fff`;
+        }
+    }
+}
+
+function showGuestMenu() {
+    const btnAuth = document.getElementById('btn-auth');
+    const userMenu = document.getElementById('user-menu');
+    const userName = document.getElementById('user-name');
+    const userAvatar = document.getElementById('user-avatar');
+    
+    if (btnAuth) btnAuth.style.display = 'none';
+    if (userMenu) userMenu.style.display = 'flex';
+    
+    if (userName) userName.textContent = 'Invitado';
+    if (userAvatar) {
+        userAvatar.src = 'https://ui-avatars.com/api/?name=Invitado&background=64748b&color=fff';
+    }
+}
+
+function showMessage(message, type = 'info') {
+    const authMessage = document.getElementById('auth-message');
+    if (!authMessage) return;
+    
+    authMessage.textContent = message;
+    authMessage.className = 'auth-message';
+    authMessage.classList.add(`auth-message-${type}`);
+    authMessage.style.display = 'block';
+    
+    setTimeout(() => {
+        authMessage.style.display = 'none';
+    }, 5000);
+}
+
+function showMyOrders() {
+    alert('Funcionalidad de "Mis Pedidos" en desarrollo. Aquí podrás ver el historial de tus pedidos.');
+}
+
+// Inicializar sistema de autenticación cuando el DOM esté listo
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAuthSystem);
+} else {
+    initAuthSystem();
+}
+
+// Made with ❤️ by Bob
