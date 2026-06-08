@@ -25,6 +25,9 @@ Thumbs.db
 node_modules/
 dist/
 *.local
+.env
+.env.*
+!.env.example
 
 # Made with Bob
 

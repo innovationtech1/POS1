@@ -32,7 +32,7 @@
 ### 🔐 Autenticación
 - Login con Google
 - Registro con Email/Password
-- Modo Invitado
+- Cuenta obligatoria para contratar servicios y consultar pedidos
 - Recuperación de contraseña
 - Autenticación biométrica (WebAuthn)
 
@@ -66,6 +66,11 @@ innovationTECH/
 │   ├── firebase-config.js        # Configuración de Firebase
 │   └── biometric-auth.js         # Autenticación biométrica
 │
+├── 📁 server/
+│   ├── index.js                  # Backend Express
+│   ├── firebase-auth.js          # Validación de tokens Firebase
+│   └── services.js               # Catálogo/precios para validar pagos
+│
 ├── 📁 img/
 │   ├── ba18bc24...jpg           # QR de Cash App
 │   ├── agente.png               # Imagen de agente
@@ -89,6 +94,8 @@ innovationTECH/
 
 ### Requisitos Previos
 - Navegador web moderno
+- Node.js 18 o superior
+- npm
 - Editor de código (VS Code recomendado)
 - Git (opcional)
 
@@ -99,10 +106,25 @@ git clone https://github.com/TU_USUARIO/innovationtech.git
 cd innovationtech
 ```
 
-### Abrir Localmente
+### Ejecutar con Backend Local
 
-1. Abre `index.html` en tu navegador
-2. O usa Live Server en VS Code
+```bash
+npm install
+cp .env.example .env
+npm run dev
+```
+
+Después abre:
+
+```text
+http://localhost:3000
+```
+
+El backend Express sirve la app estática y expone la API en `/api`.
+
+### Abrir solo Frontend Estático
+
+También puedes abrir `index.html` o usar Live Server, pero los pagos reales con tarjeta requieren el backend activo.
 
 ## ⚙️ Configuración
 
@@ -121,11 +143,12 @@ El proyecto ya está configurado con Firebase. Si quieres usar tu propia cuenta:
 Para aceptar tarjetas de crédito/débito:
 
 1. Crea cuenta en [Stripe](https://stripe.com)
-2. Obtén tu clave pública
-3. Actualiza en `js/script.js` línea 1137:
+2. Obtén tu clave pública y secreta
+3. Configura `.env`:
 
-```javascript
-const STRIPE_PUBLIC_KEY = 'pk_test_TU_CLAVE_AQUI';
+```bash
+STRIPE_PUBLISHABLE_KEY=pk_test_TU_CLAVE_PUBLICA
+STRIPE_SECRET_KEY=sk_test_TU_CLAVE_SECRETA
 ```
 
 📖 **Guía completa:** `docs/CONFIGURAR-STRIPE.md`
@@ -189,6 +212,11 @@ Tu sitio estará en: `https://TU_USUARIO.github.io/innovationtech/`
 - Stripe (Pagos)
 - WebAuthn (Biometría)
 
+### Backend
+- Node.js + Express
+- Stripe PaymentIntents
+- Validación de Firebase ID Tokens con certificados públicos
+
 ### Herramientas
 - Git
 - VS Code
@@ -198,6 +226,7 @@ Tu sitio estará en: `https://TU_USUARIO.github.io/innovationtech/`
 
 | Documento | Descripción |
 |-----------|-------------|
+| [CONFIGURAR-BACKEND.md](docs/CONFIGURAR-BACKEND.md) | Ejecutar backend Express y API de pagos |
 | [CONFIGURAR-STRIPE.md](docs/CONFIGURAR-STRIPE.md) | Configuración completa de Stripe |
 | [GUIA-DESPLIEGUE.md](docs/GUIA-DESPLIEGUE.md) | Cómo desplegar el sitio |
 | [INSTRUCCIONES-PAGOS.md](docs/INSTRUCCIONES-PAGOS.md) | Sistema de pagos |

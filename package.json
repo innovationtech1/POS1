@@ -1,0 +1,31 @@
+{
+  "name": "innovationtech-pos",
+  "version": "2.1.0",
+  "description": "POS online para servicios de agencia de marketing con Firebase Auth, Firestore y backend Stripe.",
+  "main": "server/index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "check": "node --check server/index.js && node --check server/firebase-auth.js && node --check server/services.js && node --check js/script.js && node --check js/firebase-config.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/innovationtech1/POS1.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/innovationtech1/POS1/issues"
+  },
+  "homepage": "https://github.com/innovationtech1/POS1#readme",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "stripe": "^22.2.0"
+  }
+}
