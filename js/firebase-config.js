@@ -186,32 +186,6 @@ function getCurrentUser() {
     return auth.currentUser;
 }
 
-// Continue as guest
-function continueAsGuest() {
-    try {
-        // Guardar en localStorage que el usuario es invitado
-        localStorage.setItem('innovationtech_guest_mode', 'true');
-        localStorage.setItem('innovationtech_guest_id', 'guest_' + Date.now());
-        
-        console.log('✅ Continuando como invitado');
-        
-        // Registrar evento en Analytics
-        if (analytics) {
-            analytics.logEvent('guest_access');
-        }
-        
-        return { success: true, isGuest: true };
-    } catch (error) {
-        console.error('❌ Error al continuar como invitado:', error);
-        return { success: false, error: error.message };
-    }
-}
-
-// Check if user is guest
-function isGuestMode() {
-    return localStorage.getItem('innovationtech_guest_mode') === 'true';
-}
-
 // Auth state observer
 function onAuthStateChanged(callback) {
     if (!auth) {
@@ -231,24 +205,35 @@ async function saveQuotationToFirebase(quotationData) {
             return { success: false, error: 'Firebase no inicializado' };
         }
 
-        // Agregar timestamp
-        quotationData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-        quotationData.status = 'pending'; // pending, paid, completed, cancelled
+        const currentUser = getCurrentUser();
+        if (!currentUser) {
+            return { success: false, error: 'Debes iniciar sesión para guardar pedidos.' };
+        }
+
+        const securedQuotationData = {
+            ...quotationData,
+            userId: currentUser.uid,
+            userEmail: currentUser.email || quotationData.customerEmail,
+            userName: currentUser.displayName || quotationData.customerName || null,
+            authProvider: currentUser.providerData?.[0]?.providerId || 'password',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            status: quotationData.status || 'pending' // pending, paid, completed, cancelled
+        };
         
         // Guardar en Firestore
-        const docRef = await db.collection('quotations').add(quotationData);
+        const docRef = await db.collection('quotations').add(securedQuotationData);
         
         console.log('✅ Cotización guardada en Firebase:', docRef.id);
         
         // También guardar localmente como backup
-        saveQuotationLocally({ ...quotationData, firebaseId: docRef.id });
+        saveQuotationLocally({ ...securedQuotationData, firebaseId: docRef.id });
         
         // Registrar evento en Analytics
         if (analytics) {
             analytics.logEvent('quotation_created', {
                 quotation_id: docRef.id,
-                total_amount: quotationData.total,
-                services_count: quotationData.services.length
+                total_amount: securedQuotationData.total,
+                services_count: securedQuotationData.services.length
             });
         }
         
@@ -258,6 +243,51 @@ async function saveQuotationToFirebase(quotationData) {
         // Guardar localmente como fallback
         saveQuotationLocally(quotationData);
         return { success: false, error: error.message };
+    }
+}
+
+// Función para obtener cotizaciones del usuario autenticado
+async function getUserQuotations(userId, limit = 50) {
+    try {
+        if (!db) {
+            console.warn('Firebase no está inicializado');
+            return { success: false, data: [], error: 'Firebase no inicializado' };
+        }
+
+        const currentUser = getCurrentUser();
+        const requestedUserId = userId || currentUser?.uid;
+        if (!currentUser || currentUser.uid !== requestedUserId) {
+            return { success: false, data: [], error: 'No tienes permiso para ver estos pedidos.' };
+        }
+
+        const snapshot = await db.collection('quotations')
+            .where('userId', '==', requestedUserId)
+            .limit(limit)
+            .get();
+
+        const quotations = [];
+        snapshot.forEach(doc => {
+            quotations.push({
+                id: doc.id,
+                ...doc.data()
+            });
+        });
+
+        quotations.sort((a, b) => {
+            const getTime = item => {
+                if (item.createdAt && typeof item.createdAt.toDate === 'function') {
+                    return item.createdAt.toDate().getTime();
+                }
+                if (item.localId) return Number(item.localId);
+                return 0;
+            };
+            return getTime(b) - getTime(a);
+        });
+
+        return { success: true, data: quotations };
+    } catch (error) {
+        console.error('❌ Error al obtener pedidos del usuario:', error);
+        return { success: false, data: [], error: error.message };
     }
 }
 
@@ -355,6 +385,7 @@ window.FirebaseDB = {
     saveQuotation: saveQuotationToFirebase,
     updatePayment: updatePaymentStatus,
     getAllQuotations: getAllQuotations,
+    getUserQuotations: getUserQuotations,
     getLocalQuotations: getLocalQuotations
 };
 

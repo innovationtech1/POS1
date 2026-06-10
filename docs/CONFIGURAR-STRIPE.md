@@ -49,16 +49,22 @@ Stripe es una plataforma de pagos que te permite aceptar tarjetas de crédito y 
      - **Publishable key** (Clave pública) - Comienza con `pk_test_...`
      - **Secret key** (Clave secreta) - Comienza con `sk_test_...`
 
-3. **Copia la Clave Pública**
+3. **Copia la Clave Pública y la Clave Secreta**
    - Click en "Reveal test key" en la Publishable key
-   - Copia toda la clave (ejemplo: `pk_test_51Abc123...`)
+   - Copia toda la clave pública (ejemplo: `pk_test_51Abc123...`)
+   - Copia también la Secret key (ejemplo: `sk_test_51Abc123...`)
 
-4. **Actualiza tu Código**
-   - Abre `script.js`
-   - Ve a la línea 1137
-   - Reemplaza:
-   ```javascript
-   const STRIPE_PUBLIC_KEY = 'pk_test_TU_CLAVE_AQUI';
+4. **Configura el Backend**
+   - Copia `.env.example` a `.env`
+   - Reemplaza las claves:
+   ```bash
+   STRIPE_PUBLISHABLE_KEY=pk_test_TU_CLAVE_PUBLICA
+   STRIPE_SECRET_KEY=sk_test_TU_CLAVE_SECRETA
+   ```
+   - Ejecuta:
+   ```bash
+   npm install
+   npm run dev
    ```
 
 ### Modo Producción (Para Pagos Reales)
@@ -78,9 +84,10 @@ Stripe es una plataforma de pagos que te permite aceptar tarjetas de crédito y 
    - Ve a "Developers" → "API keys"
    - Copia la **Publishable key** (comienza con `pk_live_...`)
 
-3. **Actualiza tu Código para Producción**
-   ```javascript
-   const STRIPE_PUBLIC_KEY = 'pk_live_TU_CLAVE_REAL';
+3. **Actualiza tus variables de entorno para Producción**
+   ```bash
+   STRIPE_PUBLISHABLE_KEY=pk_live_TU_CLAVE_PUBLICA
+   STRIPE_SECRET_KEY=sk_live_TU_CLAVE_SECRETA
    ```
 
 ---
@@ -198,39 +205,16 @@ CVC: Cualquier 3 dígitos
 
 ### 1. Personalizar Descripción de Pagos
 
-En `script.js`, busca la función `processStripePayment()` y agrega:
+El backend crea PaymentIntents en `server/index.js`. Puedes ajustar `description` y `metadata` dentro del endpoint `/api/payments/create-intent`:
 
 ```javascript
-async function processStripePayment() {
-    try {
-        if (!stripe || !cardElement) {
-            throw new Error('Stripe no está configurado correctamente');
-        }
-        
-        // Crear token de pago con metadata
-        const {token, error} = await stripe.createToken(cardElement, {
-            name: currentQuotationData.customerName,
-            address_line1: 'San Antonio, TX',
-            address_country: 'US'
-        });
-        
-        if (error) {
-            throw new Error(error.message);
-        }
-        
-        console.log('✅ Token de Stripe creado:', token.id);
-        
-        return {
-            success: true,
-            confirmation: token.id
-        };
-    } catch (error) {
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
+stripe.paymentIntents.create({
+  description: `innovationTECH - ${services.length} servicio(s)`,
+  metadata: {
+    uid: req.user.uid,
+    source: 'online-pos'
+  }
+});
 ```
 
 ### 2. Agregar Logo de tu Empresa
